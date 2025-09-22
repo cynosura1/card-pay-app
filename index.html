@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Card Payments</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <style>
+    :root { --teal:#0f766e; --teal-600:#0e645f; --bg:#0b1215; --fg:#e6f2f0; --muted:#9fb8b3; --danger:#b91c1c; }
+    * { box-sizing: border-box }
+    html, body { height:100%; }
+    body { margin:0; font:16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--fg); background:linear-gradient(180deg,#071215,#0b171a 45%, #101a1d); }
+    header { display:flex; align-items:center; gap:.5rem; padding:16px; border-bottom:1px solid #11343c; background:rgba(4,10,12,.55); backdrop-filter:saturate(120%) blur(10px); position:sticky; top:0; z-index:20; }
+    header h1 { margin:0; font-size:1.1rem; font-weight:700; letter-spacing:.3px; }
+    #appVersion { font:600 12px/1 mono; color:#7bd9cc; background:#0a2a2f; border:1px solid #164e56; padding:2px 6px; border-radius:999px; }
+    #installBtn { margin-left:auto; background:var(--teal); color:#fff; border:none; padding:8px 12px; border-radius:8px; font-weight:600; cursor:pointer; }
+    #installBtn[hidden] { display:none; }
+
+    nav.tabs { display:flex; gap:6px; padding:12px 16px 0; }
+    .tab-btn { appearance:none; border:1px solid #134248; color:var(--fg); background:#0b2024; padding:8px 12px; border-radius:8px 8px 0 0; cursor:pointer; font-weight:600; }
+    .tab-btn.active { background:#103238; border-bottom-color:transparent; }
+
+    main { padding:16px; border-top:1px solid #11343c; background:#0c171a; }
+    .tab { display:none; }
+    .tab.active { display:block; }
+
+    form { display:grid; gap:10px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); align-items:end; margin:8px 0 14px; }
+    label { display:flex; flex-direction:column; gap:6px; font-weight:600; color:var(--muted); }
+    input, select, button { padding:10px 12px; border-radius:8px; border:1px solid #1b3f45; background:#0a1a1d; color:var(--fg); }
+    input[type="number"] { text-align:right; }
+    button.primary { background:var(--teal); border-color:var(--teal-600); color:#fff; font-weight:700; }
+    button.secondary { background:#0b2024; color:#c6f0ea; border-color:#174a52; }
+    button.icon { background:#11262b; border-color:#113b41; padding:6px 10px; }
+    button.icon.danger { background:#2b1111; border-color:#512323; color:#ffd7d7; }
+
+    .meta { color:var(--muted); font-size:.9rem }
+    ul.cards { list-style:none; margin:0; padding:0; display:grid; gap:8px }
+    ul.cards li { display:flex; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid #123c44; border-radius:10px; background:#0a191c; }
+    ul.cards li .edit-row { display:flex; gap:8px; }
+    ul.cards li input { width:13rem; }
+
+    table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+    th, td { padding:8px 10px; border-bottom:1px solid #13353b; }
+    th { text-align:left; color:#9dd1c7; font-weight:700; }
+    td.num { text-align:right; }
+    tfoot td { font-weight:800; }
+
+    .actions-row { display:flex; gap:8px; flex-wrap:wrap; margin:12px 0 8px; }
+
+    /* Toasts */
+    #toastHost { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:9999; display:flex; flex-direction:column; gap:8px; width:min(560px, 92vw); pointer-events:none; }
+    .toast { pointer-events:auto; border-radius:10px; padding:10px 12px; border:1px solid #18464d; background:#0b2125; color:#d9fffa; box-shadow:0 10px 24px rgba(0,0,0,.35); opacity:0; transform:translateY(10px); transition:.25s ease; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.success { border-color:#1c5f55; background:#0d2522; }
+    .toast.info { border-color:#2f4761; background:#0e1a28; }
+    .toast.update { background:#0f2133; border-color:#25435e; }
+    .toast-row { display:flex; align-items:center; gap:10px; }
+    .toast-action { background:#22c55e; color:#05220e; border:none; padding:8px 12px; border-radius:8px; font-weight:800; cursor:pointer; }
+    .toast-close { background:transparent; border:1px solid #31556b; color:#d7f2ff; border-radius:8px; padding:6px 10px; cursor:pointer; }
+
+    /* ICS badge (inserted by JS) */
+    .cpro-ics-badge { display:inline-flex; align-items:center; gap:8px; border-radius:999px; padding:6px 10px; border:1px solid #12464c; background:#0a1e22; color:#bce9e2; margin:8px 0 10px; }
+    .cpro-ics-badge.locked { background:#122d13; border-color:#195019; color:#c6facc; }
+    .cpro-ics-badge.unlocked { background:#22120d; border-color:#4a2419; color:#ffd5c5; }
+    .cpro-ics-badge .dot { width:8px; height:8px; border-radius:50%; background:currentColor; display:inline-block; }
+  </style>
+  <link rel="icon" href="./assets/icons/icon-192.png" sizes="192x192" />
+  <link rel="icon" href="./assets/icons/icon-512.png" sizes="512x512" />
+  <link rel="apple-touch-icon" href="./assets/apple/apple-touch-icon.png" sizes="180x180" />
+</head>
+<body>
+  <header>
+    <h1>Card Payments</h1>
+    <span id="appVersion" title="App version"></span>
+    <button id="installBtn" hidden>Install app</button>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab-btn active" data-target="#payments" role="tab" aria-selected="true">Payments</button>
+    <button class="tab-btn" data-target="#cards" role="tab" aria-selected="false">Saved cards</button>
+  </nav>
+
+  <main>
+    <section id="payments" class="tab active" role="tabpanel" aria-labelledby="Payments">
+      <h2>Enter amount due</h2>
+      <form id="payment-form">
+        <label> Select card
+          <select id="paymentCard" required>
+            <option value="" disabled selected>Select a card</option>
+          </select>
+        </label>
+        <label> Amount due (USD)
+          <input id="amountDue" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00" required />
+        </label>
+        <label> Next due date
+          <input id="dueDate" type="date" required />
+        </label>
+        <button class="primary" type="submit">Save</button>
+      </form>
+
+      <div class="actions-row" aria-label="Filters">
+        <label> Due from
+          <input id="filterFrom" type="date" />
+        </label>
+        <label> Due to
+          <input id="filterTo" type="date" />
+        </label>
+        <div style="align-self:center">
+          <button id="clearFilters" class="secondary" type="button">Clear dates</button>
+        </div>
+      </div>
+
+      <section id="list" aria-label="Payments list">
+        <table id="paymentsTable">
+          <thead>
+            <tr>
+              <th>Card</th>
+              <th>Amount</th>
+              <th>Due date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+          <tfoot>
+            <tr>
+              <td><strong>Total</strong></td>
+              <td id="sumCell" class="num">$0.00</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="actions-row">
+          <button id="clearPayments" class="icon danger" type="button">Clear payments</button>
+        </div>
+      </section>
+    </section>
+
+    <section id="cards" class="tab" role="tabpanel" aria-labelledby="Saved cards">
+      <h2>Add a card</h2>
+      <form id="card-form">
+        <label> Card name
+          <input id="cardName" type="text" maxlength="50" required />
+        </label>
+        <label> Due day (1–31)
+          <input id="dueDay" type="number" min="1" max="31" required />
+        </label>
+        <button class="primary" type="submit">Save card</button>
+      </form>
+
+      <h3>Saved cards</h3>
+      <ul id="cardsUl" class="cards"></ul>
+    </section>
+  </main>
+
+  <div id="toastHost" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "Card Payments",
+  "short_name": "CardPay",
+  "description": "Offline-ready PWA to track saved cards and monthly payments. Data stays on your device.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b171a",
+  "theme_color": "#0f766e",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
